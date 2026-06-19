@@ -1,6 +1,5 @@
 local IR = {}
-function IR.process(c,o)
-if not o or not o.enabled then return c end
-return c
+function IR.process(c, o)
+    return c
 end
 return IR
