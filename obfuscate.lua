@@ -1,4 +1,5 @@
--- Achilles Obfuscator v1.1.1
+#!/usr/bin/env lua
+-- Achilles Obfuscator v1.1.1 - CLI Tool
 local Watermark = require("libs.watermark")
 
 local Obfuscators = {
@@ -30,7 +31,43 @@ local ObfNames = {
     "Multi-pass", "Minify"
 }
 
-local mode = arg and arg[1] or "medium"
+local VERSION = "1.1.1"
+local inputFile = "src/encrypt.lua"
+local outputFile = "obfuscated.lua"
+local mode = "medium"
+local verbose = false
+local passes = {}
+
+local i = 1
+while i <= #arg do
+    local a = arg[i]
+    if a == "-i" or a == "--input" then
+        inputFile = arg[i+1]; i = i + 2
+    elseif a == "-o" or a == "--output" then
+        outputFile = arg[i+1]; i = i + 2
+    elseif a == "-m" or a == "--mode" then
+        mode = arg[i+1]; i = i + 2
+    elseif a == "-p" or a == "--pass" then
+        table.insert(passes, tonumber(arg[i+1])); i = i + 2
+    elseif a == "-v" or a == "--verbose" then
+        verbose = true; i = i + 1
+    elseif a == "-h" or a == "--help" then
+        print("Achilles Obfuscator v" .. VERSION)
+        print("Usage: lua obfuscate.lua [OPTIONS]")
+        print("-i <file>   Input file")
+        print("-o <file>   Output file")
+        print("-m <mode>   weak|medium|maximum")
+        print("-p <n>      Run only pass n")
+        print("-v          Verbose")
+        print("-h          Help")
+        return
+    elseif a == "--version" then
+        print("Achilles Obfuscator v" .. VERSION); return
+    else
+        print("Unknown: " .. a); return
+    end
+end
+
 if mode ~= "weak" and mode ~= "medium" and mode ~= "maximum" then
     mode = "medium"
 end
@@ -44,57 +81,59 @@ local presets = {
 local function read_file(path)
     local f = io.open(path, "r")
     if not f then return nil end
-    local c = f:read("*all")
-    f:close()
-    return c
+    local c = f:read("*all"); f:close(); return c
 end
 
 local function write_file(path, c)
     local f = io.open(path, "w")
     if not f then return false end
-    f:write(c)
-    f:close()
-    return true
+    f:write(c); f:close(); return true
 end
 
 print("===========================================")
-print("    Achilles Obfuscator v1.1.1")
+print("    Achilles Obfuscator v" .. VERSION)
 print("===========================================")
-print("Mode: " .. mode:upper())
+print("Input:  " .. inputFile)
+print("Output: " .. outputFile)
+print("Mode:   " .. mode:upper())
 print()
 
-local source = read_file("src/encrypt.lua")
-if not source then
-    print("ERROR: Cannot read src/encrypt.lua")
-    return
-end
-
-print("Input: src/encrypt.lua (" .. #source .. " bytes)")
+local source = read_file(inputFile)
+if not source then print("ERROR: Cannot read " .. inputFile); return end
+print("Source: " .. #source .. " bytes")
 print()
 
 local code = source
 local config = presets[mode]
 
+if #passes > 0 then
+    config = {}
+    for i = 1, 17 do config[i] = false end
+    for _, p in ipairs(passes) do config[p] = true end
+end
+
 for i, obf in ipairs(Obfuscators) do
     if config[i] then
-        local name = ObfNames[i] or "Unknown"
-        print("  [+] " .. name .. "...")
+        local name = ObfNames[i]
+        io.write("  [+] " .. name .. "...")
+        io.flush()
         local new_code = obf.process(code, {enabled = true})
         if new_code and new_code ~= code then
             code = new_code
-            print("      -> " .. #code .. " bytes")
+            print(" (+" .. (#new_code - #code + 1) .. ")")
         else
-            print("      (no change)")
+            print(" (-)")
         end
     end
 end
 
 code = Watermark.add(code)
 
-local success = write_file("obfuscated_encrypt.lua", code)
-if success then
+if write_file(outputFile, code) then
     print()
     print("===========================================")
-    print("DONE! Output: obfuscated_encrypt.lua (" .. #code .. " bytes)")
+    print("SUCCESS! -> " .. outputFile .. " (" .. #code .. " bytes)")
     print("===========================================")
+else
+    print("ERROR: Cannot write " .. outputFile)
 end
