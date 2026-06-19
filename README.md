@@ -41,13 +41,27 @@ A **7-layer obfuscation pipeline** that transforms `encrypt.lua` into unreadable
 
 ### API
 ```lua
-local enc = require('encrypt')
+-- Run demo (displays configuration)
+local enc = require('obfuscated_encrypt')
+enc.demo()
 
--- Encrypt: returns hex string
+-- Encrypt: returns hex string (takes ~10 seconds due to 500K KDF iterations)
 local hex = enc.encrypt("secret message", "password")
 
 -- Decrypt: returns plaintext or nil + error
 local text = enc.decrypt(hex, "password")
+```
+
+### Usage
+```bash
+# 1. Run obfuscator to generate obfuscated_encrypt.lua
+lua obfuscate.lua
+
+# 2. Test the obfuscated output
+lua -e "local enc = require('obfuscated_encrypt'); enc.demo()"
+
+# 3. Use in your code
+lua -e "local enc = require('obfuscated_encrypt'); print(enc.encrypt('hello', 'pass'))"
 ```
 
 ---
@@ -70,17 +84,18 @@ Run `lua obfuscate.lua` to generate `obfuscated_encrypt.lua`:
 
 | File | Purpose |
 |------|---------|
-| `encrypt.lua` | Core encryption engine (12-stage pipeline) |
+| `src/encrypt.lua` | Core encryption engine (12-stage pipeline) |
 | `obfuscate.lua` | Master obfuscator (applies all layers) |
-| `random_utils.lua` | Random generation utilities |
-| `transform_utils.lua` | Code transformation utilities |
-| `variable_mangling.lua` | Variable name obfuscation |
-| `number_encoding.lua` | Number literal obfuscation |
-| `string_encryption.lua` | String literal encryption |
-| `table_obfuscation.lua` | Table structure obfuscation |
-| `opaque_predicates.lua` | Always-true/false condition injection |
-| `dead_code.lua` | Dead code injection |
-| `control_flow.lua` | Control flow flattening |
+| `libs/random_utils.lua` | Random generation utilities |
+| `libs/transform_utils.lua` | Code transformation utilities |
+| `obfuscators/variable_mangling.lua` | Variable name obfuscation |
+| `obfuscators/number_encoding.lua` | Number literal obfuscation |
+| `obfuscators/string_encryption.lua` | String literal encryption |
+| `obfuscators/table_obfuscation.lua` | Table structure obfuscation |
+| `obfuscators/opaque_predicates.lua` | Always-true/false condition injection |
+| `obfuscators/dead_code.lua` | Dead code injection |
+| `obfuscators/control_flow.lua` | Control flow flattening |
+| `obfuscated_encrypt.lua` | Obfuscated output (generated) |
 
 ---
 
