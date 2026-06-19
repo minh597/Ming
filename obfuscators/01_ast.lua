@@ -1,3 +1,3 @@
-local AST = {}
-function AST.process(c,o)if not o or not o.enabled then return c end;return c end
-return AST
+local A={}
+function A.process(c,o)return c end
+return A

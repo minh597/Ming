@@ -2,7 +2,7 @@
   encrypt.lua - ULTIMATE SINGLE-PIPE ENCRYPTION for Lua
   ======================================================
   
-  ONE function encrypt(). ONE function decrypt(). NO choices.
+  ONE function encrypt() ONLY. NO decrypt.
   
   This is the most hardcore encryption pipeline possible in pure Lua.
   Every technique is stacked into a single irreversible cascade:
@@ -306,53 +306,6 @@ local function diffusion_encrypt(data, key_stream, sbox_a, sbox_b)
     return buf
 end
 
-local function diffusion_decrypt(data, key_stream, sbox_a, sbox_b, inv_a, inv_b)
-    local n = #data
-    local buf = {}; for i = 1, n do buf[i] = data[i] end
-    
-    for round = 16, 1, -1 do
-        local ks = key_stream[(round - 1) % #key_stream + 1]
-        
-        -- Reverse shuffle
-        for i = n, 1, -1 do
-            local i1 = ((i - 1 + ks) % n) + 1
-            local i2 = ((i * ks) % n) + 1
-            buf[i1], buf[i2] = buf[i2], buf[i1]
-        end
-        
-        -- Reverse backward pass (S-Box B inverse)
-        for i = 1, n do
-            local b = buf[i]
-            b = bxor(b, rshift(ks, 1))
-            b = inv_b[b + 1]
-            if (ks + round) % 2 == 1 then b = bxor(b, 0xFF) end
-            if i > 1 then b = bxor(b, buf[i-1]) end
-            if i < n then b = bxor(b, buf[i+1]) end
-            b = rotr8(b, (ks * i + round) % 8)
-            buf[i] = b
-        end
-        
-        -- Reverse forward pass (S-Box A inverse)
-        for i = n, 1, -1 do
-            local b = buf[i]
-            b = bxor(b, ks)
-            b = inv_a[b + 1]
-            if (ks + round) % 2 == 0 then b = bxor(b, 0xFF) end
-            if i < n then b = bxor(b, buf[i+1]) end
-            if i > 1 then b = bxor(b, buf[i-1]) end
-            b = rotr8(b, (ks + i + round) % 8)
-            buf[i] = b
-        end
-    end
-    return buf
-end
-
--- ============================================================
--- STAGE 8: TRANSPOSITION
--- ============================================================
--- Reorders entire message based on key. Byte N moves to position P(N).
--- This is a permutation of the entire data array, not just local swaps.
-
 local function transpose(data, key_bytes)
     local n = #data
     local result = {}
@@ -529,99 +482,6 @@ end
 -- THE ULTIMATE DECRYPT FUNCTION
 -- ============================================================
 
-function encrypt.decrypt(hexCipher, password)
-    if not hexCipher or not password or password == "" then
-        return nil, "Invalid input"
-    end
-    
-    local raw = hex_to_bytes(hexCipher)
-    if #raw < 49 then  -- salt(32) + min data(1) + mac(16) = 49
-        return nil, "Ciphertext too short or corrupted"
-    end
-    
-    -- Extract salt (first 32 bytes)
-    local salt = {}; for i = 1, 32 do salt[i] = raw[i] end
-    local salt_str = bytes_to_str(salt)
-    
-    -- Extract MAC (last 16 bytes)
-    local mac_received = {}; for i = 1, 16 do mac_received[i] = raw[#raw - 16 + i] end
-    
-    -- Extract ciphertext
-    local data = {}; for i = 33, #raw - 16 do data[#data+1] = raw[i] end
-    
-    -- Re-derive stretched key
-    local stretched = stretch_key(password, salt_str, 8192)
-    
-    -- Split into sub-keys
-    local key_sbox_a    = {}; for i = 1, 256 do key_sbox_a[i]    = stretched[i]       end
-    local key_sbox_b    = {}; for i = 1, 256 do key_sbox_b[i]    = stretched[256 + i]  end
-    local key_feedback  = {}; for i = 1, 128 do key_feedback[i]  = stretched[512 + i]  end
-    local key_keystream = {}; for i = 1, 128 do key_keystream[i] = stretched[640 + i]  end
-    local key_diffusion = {}; for i = 1, 64  do key_diffusion[i] = stretched[768 + i]  end
-    local key_whiten    = {}; for i = 1, 64  do key_whiten[i]    = stretched[832 + i]  end
-    local key_transpose = {}; for i = 1, 32  do key_transpose[i] = stretched[896 + i]  end
-    
-    -- Build key-dependent S-Boxes
-    local sbox_a, inv_a, sbox_b, inv_b = make_sboxes(key_sbox_a)
-    
-    -- ============================================================
-    -- VERIFY INTEGRITY FIRST
-    -- ============================================================
-    
-    local mac_computed = compute_mac(salt, data, stretched, sbox_a, sbox_b)
-    for i = 1, 16 do
-        if mac_received[i] ~= mac_computed[i] then
-            return nil, "INTEGRITY FAILED: Data tampered or wrong password"
-        end
-    end
-    
-    -- ============================================================
-    -- REVERSE DATA PROCESSING (reverse order of encrypt)
-    -- ============================================================
-    
-    -- Reverse STAGE 11: Final whitening
-    data = whiten(data, key_whiten, 31)
-    
-    -- Reverse STAGE 10: Keystream XOR #3
-    local ks3 = make_keystream(key_keystream, salt[16], #data, 2)
-    for i = 1, #data do data[i] = bxor(data[i], ks3[i]) end
-    
-    -- Reverse STAGE 9: S-Box B substitution
-    data = unsubstitute(data, inv_b)
-    
-    -- Reverse STAGE 8: Keystream XOR #2
-    local ks2 = make_keystream(key_keystream, salt[32], #data, 1)
-    for i = 1, #data do data[i] = bxor(data[i], ks2[i]) end
-    
-    -- Reverse STAGE 7: Second feedback
-    data = feedback_process(data, key_feedback)
-    
-    -- Reverse STAGE 6: Transposition
-    data = untranspose(data, key_transpose)
-    
-    -- Reverse STAGE 5: 16-round bit diffusion
-    data = diffusion_decrypt(data, key_diffusion, sbox_a, sbox_b, inv_a, inv_b)
-    
-    -- Reverse STAGE 4: S-Box A substitution
-    data = unsubstitute(data, inv_a)
-    
-    -- Reverse STAGE 3: First feedback
-    data = feedback_process(data, key_feedback)
-    
-    -- Reverse STAGE 2: Keystream XOR #1
-    local ks1 = make_keystream(key_keystream, salt[1], #data, 0)
-    for i = 1, #data do data[i] = bxor(data[i], ks1[i]) end
-    
-    -- Reverse STAGE 1: Initial whitening
-    data = whiten(data, key_whiten, 0)
-    
-    return bytes_to_str(data)
-end
-
--- ============================================================
--- DEMO
--- ============================================================
-
 function encrypt.demo()
     local plaintext = "Hello World! This is a TOP SECRET message. With numbers 12345 and symbols !@#$%^&*()"
     local password = "MySup3r$3cur3P@ssw0rd!"
@@ -666,14 +526,12 @@ function encrypt.demo()
     local orig = tonumber(enc:sub(idx,idx), 16)
     local flipped = bxor(orig, 8)
     tampered = enc:sub(1,idx-1) .. string.format("%x", flipped) .. enc:sub(idx+1)
-    local _, err = encrypt.decrypt(tampered, password)
     if err then print("  Tampered ciphertext REJECTED: " .. err)
     else print("  Tampered ciphertext ACCEPTED (BUG!)") end
     print()
     
     -- Wrong password test
     print("[WRONG PASSWORD TEST]")
-    local _, err = encrypt.decrypt(enc, "WrongPassword")
     if err then print("  Wrong password REJECTED: " .. err)
     else print("  Wrong password ACCEPTED (BUG!)") end
     print()
