@@ -1,61 +1,64 @@
-# 🔐 Lua Encrypt + Obfuscator
+# Achilles Obfuscator v1.1.1
 
-A 2-layer security system for Lua - strong encryption + code obfuscation.
+Lua obfuscator with 17 obfuscation passes.
 
 ## Usage
 
 ```bash
-# Run obfuscator (default: medium)
 lua obfuscate.lua [weak|medium|maximum]
-
-# Test output
-lua -e "local enc = require('obfuscated_encrypt'); enc.demo()"
-
-# API
-lua -e "local enc = require('obfuscated_encrypt'); print(enc.encrypt('hello', 'pass'))"
 ```
 
 ### Modes
 
-| Mode | Features |
-|------|----------|
-| `weak` | String Encryption only |
-| `medium` | String Encryption + Number Encoding |
-| `maximum` | String Encryption + Number Encoding + Table Obfuscation |
+| Mode | Description |
+|------|-------------|
+| `weak` | String Encryption |
+| `medium` | + Identifier Rename, Constant Encryption, MBA |
+| `maximum` | + All obfuscation passes |
 
-### API
-```lua
-local enc = require('obfuscated_encrypt')
+### Features (17 passes)
 
-enc.demo()                                    -- Show config
-local hex, err = enc.encrypt("msg", "pass")  -- Encrypt (slow: 500K KDF)
-local text, err = enc.decrypt(hex, "pass")   -- Decrypt
-```
+| # | Pass | Description |
+|---|------|-------------|
+| 01 | AST Complete | Full AST parser |
+| 02 | Identifier Rename | Rename variables |
+| 03 | String Encryption | Encrypt string literals |
+| 04 | Constant Encryption | Encode numbers |
+| 05 | MBA | Mixed Boolean Arithmetic |
+| 06 | Opaque Predicate | Insert unreachable code |
+| 07 | Dead Code | Inject dead code blocks |
+| 08 | Control Flow Flattening | Restructure control flow |
+| 09 | Bogus Control Flow | Insert fake branches |
+| 10 | Fake States | State machine injection |
+| 11 | Table Encryption | Encrypt table literals |
+| 12 | Runtime Decoder | Decode at runtime |
+| 13 | VM (Stack/Register) | Virtual machine |
+| 14 | Anti Dump | Anti-debugging |
+| 15 | Anti Decompiler | Confuse decompilers |
+| 16 | Multi-pass Scheduler | Multiple passes |
+| 17 | Minify | Reduce code size |
 
 ## Project Structure
 
 ```
 /workspace/project/Ming/
-├── src/encrypt.lua              # Original encryption
-├── obfuscate.lua                # Master obfuscator (3 modes)
-├── obfuscators/                 # Obfuscation modules
-│   ├── string_encryption.lua    # ✅ Working
-│   ├── number_encoding.lua      # ✅ Working
-│   ├── table_obfuscation.lua    # ✅ Working
+├── src/encrypt.lua           # Source code
+├── obfuscate.lua             # Main obfuscator
+├── obfuscators/              # 17 obfuscation modules
+│   ├── 01_ast.lua
+│   ├── 02_identifier_rename.lua
+│   ├── 03_string_encryption.lua
 │   └── ...
-├── libs/                        # Utilities
-└── obfuscated_encrypt.lua       # Generated output
+├── libs/                    # Utilities
+│   └── watermark.lua
+└── obfuscated_encrypt.lua    # Output
 ```
 
-## Encryption Features
+## API
 
-- **12-stage pipeline**: whitening → keystream XOR → S-Box → diffusion → transposition → MAC
-- **500K KDF iterations**: PBKDF2-like key derivation
-- **2 key-dependent S-Boxes**: AES-like non-linear substitution
-- **16 diffusion rounds**: full avalanche effect
-- **128-byte feedback cipher**: avalanche
-- **16-byte HMAC**: integrity check
-
-## Security
-
-Without the correct password, ciphertext is indistinguishable from random noise.
+```lua
+local enc = require('obfuscated_encrypt')
+enc.demo()
+local hex = enc.encrypt("msg", "pass")
+local text = enc.decrypt(hex, "pass")
+```
