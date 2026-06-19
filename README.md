@@ -1,111 +1,61 @@
-# 🔐 Ultimate Encryption + Obfuscation System
+# 🔐 Lua Encrypt + Obfuscator
 
-Một hệ thống bảo mật 2 lớp cho Lua - mã hóa mạnh mẽ + làm rối code.
+A 2-layer security system for Lua - strong encryption + code obfuscation.
 
-## 📁 Cấu trúc Project
-
-```
-/workspace/project/Ming/
-├── src/                    # Code gốc
-│   └── encrypt.lua         # Engine mã hóa 12-stage
-├── obfuscators/            # Các module làm rối
-│   ├── string_encryption.lua    ✅ Hoạt động
-│   ├── variable_mangling.lua    ⚠️ Cần fix
-│   ├── control_flow.lua        ⚠️ Cần fix
-│   ├── dead_code.lua           ⚠️ Cần fix
-│   ├── number_encoding.lua     ⚠️ Cần fix
-│   ├── opaque_predicates.lua   ⚠️ Cần fix
-│   └── table_obfuscation.lua   ⚠️ Cần fix
-├── libs/                   # Utilities
-│   ├── random_utils.lua
-│   └── transform_utils.lua
-├── obfuscate.lua           # Master obfuscator
-├── obfuscated_encrypt.lua  # Output (sinh khi chạy obfuscate.lua)
-└── README.md
-```
-
-## 🛡️ Layer 1: Mã hóa (`src/encrypt.lua`)
-
-**12-stage encryption pipeline** với API đơn giản `encrypt()` / `decrypt()`.
-
-### Pipeline
-```
-① Initial whitening (XOR với key material)
-② Keystream XOR #1 (stream cipher)
-③ 128-byte feedback cipher (avalanche effect)
-④ S-Box A substitution (non-linear)
-⑤ 16-round bit diffusion (S-Box A + B)
-⑥ Transposition (hoán vị toàn bộ message)
-⑦ Second feedback pass
-⑧ Keystream XOR #2 (seed khác)
-⑨ S-Box B substitution (permutation khác)
-⑩ Keystream XOR #3 (seed thứ 3)
-⑪ Final whitening (offset khác)
-⑫ 16-byte HMAC integrity tag (dual S-Box)
-```
-
-### Thông số
-| Thông số | Giá trị |
-|----------|---------|
-| KDF iterations | **500,000** |
-| Salt | **32 bytes** random |
-| S-Boxes | **2** (key-dependent) |
-| Diffusion rounds | **16** |
-| Feedback state | **128 bytes** |
-
-## 🎭 Layer 2: Obfuscation (`obfuscate.lua`)
-
-**7-layer obfuscation pipeline** biến code thành khó đọc/hack.
-
-```
-① Variable Mangling     → Tên biến ngẫu nhiên
-② Number Encoding       → Số thành biểu thức toán
-③ String Encryption     → Chuỗi XOR-encrypted, decode khi chạy
-④ Table Obfuscation     → Keys xáo trộn
-⑤ Opaque Predicates     → Điều kiện luôn đúng/sai
-⑥ Dead Code Injection   → Code không bao giờ chạy
-⑦ Control Flow Flattening → goto-based dispatcher
-```
-
-## 🚀 Cách sử dụng
+## Usage
 
 ```bash
-# 1. Chạy obfuscator để tạo obfuscated_encrypt.lua
-lua obfuscate.lua
+# Run obfuscator (default: medium)
+lua obfuscate.lua [weak|medium|maximum]
 
-# 2. Test output
+# Test output
 lua -e "local enc = require('obfuscated_encrypt'); enc.demo()"
 
-# 3. Sử dụng trong code
+# API
 lua -e "local enc = require('obfuscated_encrypt'); print(enc.encrypt('hello', 'pass'))"
 ```
+
+### Modes
+
+| Mode | Features |
+|------|----------|
+| `weak` | String Encryption only |
+| `medium` | String Encryption + Number Encoding |
+| `maximum` | String Encryption + Number Encoding + Table Obfuscation |
 
 ### API
 ```lua
 local enc = require('obfuscated_encrypt')
 
--- Demo
-enc.demo()
-
--- Mã hóa (mất ~10 giây do 500K KDF iterations)
-local hex, err = enc.encrypt("secret message", "password")
-
--- Giải mã
-local text, err = enc.decrypt(hex, "password")
+enc.demo()                                    -- Show config
+local hex, err = enc.encrypt("msg", "pass")  -- Encrypt (slow: 500K KDF)
+local text, err = enc.decrypt(hex, "pass")   -- Decrypt
 ```
 
-## ✅ Trạng thái
+## Project Structure
 
-| Module | Status |
-|--------|--------|
-| String Encryption | ✅ Hoạt động |
-| Variable Mangling | ⚠️ Bug - sinh tên không hợp lệ |
-| Number Encoding | ⚠️ Bug - syntax không đúng |
-| Control Flow | ⚠️ Bug - goto không khớp |
-| Dead Code | ⚠️ Bug - code không hợp lệ |
-| Opaque Predicates | ⚠️ Bug |
-| Table Obfuscation | ⚠️ Bug |
+```
+/workspace/project/Ming/
+├── src/encrypt.lua              # Original encryption
+├── obfuscate.lua                # Master obfuscator (3 modes)
+├── obfuscators/                 # Obfuscation modules
+│   ├── string_encryption.lua    # ✅ Working
+│   ├── number_encoding.lua      # ✅ Working
+│   ├── table_obfuscation.lua    # ✅ Working
+│   └── ...
+├── libs/                        # Utilities
+└── obfuscated_encrypt.lua       # Generated output
+```
 
-## 🔒 Tại sao an toàn?
+## Encryption Features
 
-Nếu không có password đúng, ciphertext không thể phân biệt được với noise ngẫu nhiên. Và nếu ai đó có source code, obfuscation làm nó nearly impossible để hiểu.
+- **12-stage pipeline**: whitening → keystream XOR → S-Box → diffusion → transposition → MAC
+- **500K KDF iterations**: PBKDF2-like key derivation
+- **2 key-dependent S-Boxes**: AES-like non-linear substitution
+- **16 diffusion rounds**: full avalanche effect
+- **128-byte feedback cipher**: avalanche
+- **16-byte HMAC**: integrity check
+
+## Security
+
+Without the correct password, ciphertext is indistinguishable from random noise.
