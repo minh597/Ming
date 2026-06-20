@@ -3,35 +3,34 @@
 local Watermark = require('libs.watermark')
 
 local Obfuscators = {
-    require('obfuscators.01_ast'),
-    require('obfuscators.02_identifier_rename'),
-    require('obfuscators.03_string_encryption'),
-    require('obfuscators.04_constant_encryption'),
-    require('obfuscators.05_mba'),
-    require('obfuscators.06_opaque_predicates'),
-    require('obfuscators.07_dead_code'),
-    require('obfuscators.08_control_flow'),
-    require('obfuscators.09_bogus_control_flow'),
-    require('obfuscators.10_fake_states'),
-    require('obfuscators.11_table_encryption'),
-    require('obfuscators.12_runtime_decoder'),
-    require('obfuscators.13_vm'),
-    require('obfuscators.14_anti_dump'),
-    require('obfuscators.15_anti_decompiler'),
-    require('obfuscators.16_multi_pass'),
-    require('obfuscators.17_minify'),
+    require('obfuscators.01_ast.pass'),
+    require('obfuscators.02_rename.pass'),
+    require('obfuscators.03_string.pass'),
+    require('obfuscators.04_const.pass'),
+    require('obfuscators.05_mba.pass'),
+    require('obfuscators.06_opaque.pass'),
+    require('obfuscators.07_dead.pass'),
+    require('obfuscators.08_ctrl.pass'),
+    require('obfuscators.09_bogus.pass'),
+    require('obfuscators.10_fake.pass'),
+    require('obfuscators.11_table.pass'),
+    require('obfuscators.12_runtime.pass'),
+    require('obfuscators.13_vm.pass'),
+    require('obfuscators.14_dump.pass'),
+    require('obfuscators.15_decomp.pass'),
+    require('obfuscators.16_multi.pass'),
+    require('obfuscators.17_minify.pass'),
 }
 
 local ObfNames = {
-    'AST', 'Rename', 'StringEnc', 'ConstEnc', 'MBA',
-    'Opaque', 'DeadCode', 'CtrlFlow', 'Bogus', 'FakeState',
-    'TableEnc', 'Runtime', 'VM', 'AntiDump', 'AntiDec',
-    'MultiPass', 'Minify'
+    '01_ast', '02_rename', '03_string', '04_const', '05_mba',
+    '06_opaque', '07_dead', '08_ctrl', '09_bogus', '10_fake',
+    '11_table', '12_runtime', '13_vm', '14_dump', '15_decomp',
+    '16_multi', '17_minify'
 }
 
 local VERSION = '1.1.1'
 
--- Usage
 if #arg < 3 then
     print('Achilles Obfuscator v' .. VERSION)
     print('Usage: lua main.lua <input.lua> <output.lua> <mode>')
